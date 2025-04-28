@@ -7,6 +7,7 @@ import {
   getGlobalRoles,
   getOrganizationRoles,
   getRoleById,
+  getRolePermissions,
 } from './role.controller';
 
 const router = express.Router({ mergeParams: true });
@@ -38,22 +39,29 @@ router.post(
 // Get all global roles
 router.get(
   '/global',
-  // checkPermission('view_global_roles'),
-  getGlobalRoles
+  checkPermission('manage_user_global_roles'),
+  getGlobalRoles,
 );
-
 
 // Get role by ID
 router.get(
   '/:roleId',
-  // checkPermission('view_roles'),
-  getRoleById
+  checkPermission('manage_user_global_roles'),
+  getRoleById,
+);
+
+// Get role permissions
+router.get(
+  '/:roleId/permissions',
+  protect,
+  checkPermission('manage_user_global_roles'),
+  getRolePermissions,
 );
 
 // Delete role
 router.delete(
   '/:roleId',
   checkPermission('manage_user_global_roles'),
-  deleteRole
+  deleteRole,
 );
 export default router;

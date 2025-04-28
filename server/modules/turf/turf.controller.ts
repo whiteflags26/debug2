@@ -13,10 +13,10 @@ export default class TurfController {
   }
 
   /**
-   * @route POST /api/v1/turfs
-   * @desc Create a new turf with details, images, and operating hours
-   * @access Private/Admin
-   */
+ * @route POST /api/v1/turfs
+ * @desc Create a new turf with details, images, and operating hours
+ * @access Private/Admin
+ */
   createTurf = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const {
@@ -30,22 +30,47 @@ export default class TurfController {
       const images = req.files as Express.Multer.File[];
 
       try {
-        // Parse and validate all fields
-        const parsedFields = await this.validateAndParseCreateData({
-          name,
-          sports,
-          basePrice,
-          team_size,
-          organization,
-          operatingHours,
-        });
-
-        if (!parsedFields) {
-          return next(new ErrorResponse('Failed to parse turf data', 400));
+        // Validate required fields
+        if (!name || !organization) {
+          return next(new ErrorResponse('Name and organization are required', 400));
         }
 
-        // Create turf
-        const turf = await this.turfService.createTurf(parsedFields, images);
+        // Parse numeric fields
+        const basePriceResult = this.parseBasePrice(basePrice);
+        if (basePriceResult.error) {
+          return next(basePriceResult.error);
+        }
+
+        // Parse sports
+        const sportsResult = this.parseSports(sports);
+        if (sportsResult.error) {
+          return next(sportsResult.error);
+        }
+
+        // Parse operating hours
+        const operatingHoursResult = this.parseOperatingHours(operatingHours);
+        if (operatingHoursResult.error) {
+          return next(operatingHoursResult.error);
+        }
+
+        // Parse team size
+        const teamSizeResult = this.parseTeamSize(team_size);
+        if (teamSizeResult.error) {
+          return next(teamSizeResult.error);
+        }
+
+        // Combine all parsed data
+        const turfData: Partial<ITurf> = {
+          name,
+          organization: new mongoose.Types.ObjectId(organization),
+          ...basePriceResult.data,
+          ...sportsResult.data,
+          ...operatingHoursResult.data,
+          ...teamSizeResult.data,
+        };
+
+        // Create the turf using the service
+        const turf = await this.turfService.createTurf(turfData, images);
 
         res.status(201).json({
           success: true,
@@ -54,7 +79,7 @@ export default class TurfController {
         });
       } catch (error) {
         console.error('Error creating turf:', error);
-        return next(
+        next(
           new ErrorResponse(
             `Failed to create turf: ${(error as Error).message}`,
             400,
@@ -164,15 +189,21 @@ export default class TurfController {
   );
 
   /**
-   * @route PUT /api/v1/turfs/:id
-   * @desc Update a turf's details and images by ID
-   * @access Private/Admin
-   */
-
+ * @route PUT /api/v1/turfs/:id
+ * @desc Update a turf's details and images by ID
+ * @access Private/Admin
+ */
   updateTurfById = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const { id } = req.params;
-      const { basePrice, operatingHours, sports, ...rest } = req.body;
+      // Remove organization from request body to prevent updates
+      const { basePrice, operatingHours, sports, organization, ...rest } = req.body;
+
+      // Notify if someone tried to update organization
+      if (organization) {
+        return next(new ErrorResponse('Organization cannot be changed for an existing turf', 400));
+      }
+
       const newImages = req.files as Express.Multer.File[];
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -348,8 +379,9 @@ export default class TurfController {
         teamSize: req.query.teamSize as string,
         sports: req.query.sports as string | string[],
         facilities: req.query.facilities as string | string[],
-        preferredDay: req.query.preferredDay as string,
-        preferredTime: req.query.preferredTime as string,
+        preferredDate: req.query.preferredDate as string,
+        preferredTimeStart: req.query.preferredTimeStart as string,
+        preferredTimeEnd: req.query.preferredTimeEnd as string,
         latitude: req.query.latitude as string,
         longitude: req.query.longitude as string,
         radius: req.query.radius as string,
@@ -360,6 +392,51 @@ export default class TurfController {
       const result = await this.turfService.filterTurfs(filterOptions);
 
       res.status(200).json(result);
-    },
+    }
+  );
+
+  /**
+   * @route GET /api/v1/turfs/:id/status
+   * @desc Check if a turf is currently open or closed
+   * @access Public
+   */
+  getTurfStatus = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return next(new ErrorResponse("Invalid Turf ID format", 404));
+      }
+
+      const status = await this.turfService.checkTurfStatus(id);
+
+      res.status(200).json({
+        success: true,
+        data: status,
+      });
+    }
+  );
+
+  /**
+ * @route GET /api/v1/turfs/organization/:organizationId
+ * @desc Retrieve all turfs belonging to a specific organization
+ * @access Public
+ */
+  getTurfsByOrganizationId = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const { organizationId } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(organizationId)) {
+        return next(new ErrorResponse('Invalid Organization ID format', 400));
+      }
+
+      const turfs = await this.turfService.getTurfsByOrganizationId(organizationId);
+
+      res.status(200).json({
+        success: true,
+        count: turfs.length,
+        data: turfs,
+      });
+    }
   );
 }

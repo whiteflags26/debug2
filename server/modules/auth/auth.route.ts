@@ -1,14 +1,16 @@
 import express from 'express';
 import {
+  adminLogin,
   forgotPassword,
   getMe,
   login,
   logout,
   register,
   resetPassword,
-  verifyEmail
-} from "./auth.controller";
-import { protect } from "./auth.middleware";
+  verifyEmail,
+  resendVerificationEmail
+} from './auth.controller';
+import { protect } from './auth.middleware';
 
 const router = express.Router();
 
@@ -22,8 +24,11 @@ router.get('/me', protect, getMe);
 
 router.post('/forgot-password', forgotPassword);
 
-router.post("/reset-password", resetPassword);
+router.post('/reset-password', resetPassword);
 
-router.get("/verify-email", verifyEmail);
+router.get('/verify-email', verifyEmail);
 
+router.post('/admin/login',adminLogin)
+
+router.post('/resend-verification', resendVerificationEmail);
 export default router;

@@ -18,6 +18,7 @@ const errorHandler = (
   error.message = err.message;
 
   console.log(err.name);
+  console.log(err.message);
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {

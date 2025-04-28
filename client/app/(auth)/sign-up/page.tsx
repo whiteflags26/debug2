@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -8,7 +8,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/lib/contexts/authContext";
-import { registerUser } from "@/lib/server-apis/register-api";
+import { registerUser } from "@/lib/server-apis/authentication/register-api";
+import { ApiError } from "@/types/api-error";
 
 interface SignUpFormData {
   first_name: string;
@@ -32,7 +33,7 @@ export default function SignUpPage() {
     reset,
   } = useForm<SignUpFormData>();
 
-  const password = watch('password');
+  const password = watch("password");
 
   const onSubmit = async (data: SignUpFormData) => {
     try {
@@ -50,11 +51,12 @@ export default function SignUpPage() {
       await login(data.email, data.password);
 
       // Successfully registered
-      toast.success('Registration successful!');
+      toast.success("Registration successful!");
       reset(); // Clear form
-      router.push('/'); // Redirect to login page
-    } catch (error: any) {
-      toast.error(error.message ?? 'Failed to register');
+      router.push("/"); // Redirect to login page
+    } catch (err) {
+      const error = err as ApiError;
+      toast.error(error.message ?? "Failed to register");
     } finally {
       setIsLoading(false);
     }
@@ -90,9 +92,9 @@ export default function SignUpPage() {
               <input
                 type="text"
                 id="first_name"
-                {...register('first_name', {
-                  required: 'First name is required',
-                  minLength: { value: 2, message: 'First name is too short' },
+                {...register("first_name", {
+                  required: "First name is required",
+                  minLength: { value: 2, message: "First name is too short" },
                 })}
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 shadow-sm"
                 placeholder="Enter your first name"
@@ -115,9 +117,9 @@ export default function SignUpPage() {
               <input
                 type="text"
                 id="last_name"
-                {...register('last_name', {
-                  required: 'Last name is required',
-                  minLength: { value: 2, message: 'Last name is too short' },
+                {...register("last_name", {
+                  required: "Last name is required",
+                  minLength: { value: 2, message: "Last name is too short" },
                 })}
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 shadow-sm"
                 placeholder="Enter your last name"
@@ -140,11 +142,11 @@ export default function SignUpPage() {
               <input
                 type="email"
                 id="email"
-                {...register('email', {
-                  required: 'Email is required',
+                {...register("email", {
+                  required: "Email is required",
                   pattern: {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: 'Invalid email address',
+                    message: "Invalid email address",
                   },
                 })}
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 shadow-sm"
@@ -168,11 +170,11 @@ export default function SignUpPage() {
               <input
                 type="password"
                 id="password"
-                {...register('password', {
-                  required: 'Password is required',
+                {...register("password", {
+                  required: "Password is required",
                   minLength: {
                     value: 8,
-                    message: 'Password must be at least 8 characters',
+                    message: "Password must be at least 8 characters",
                   },
                 })}
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 shadow-sm"
@@ -196,10 +198,10 @@ export default function SignUpPage() {
               <input
                 type="password"
                 id="retypePassword"
-                {...register('retypePassword', {
-                  required: 'Please retype your password',
-                  validate: value =>
-                    value === password || 'Passwords do not match',
+                {...register("retypePassword", {
+                  required: "Please retype your password",
+                  validate: (value) =>
+                    value === password || "Passwords do not match",
                 })}
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 shadow-sm"
                 placeholder="Re-type your password"
@@ -216,18 +218,18 @@ export default function SignUpPage() {
               <input
                 type="checkbox"
                 id="terms"
-                {...register('terms', { required: true })}
+                {...register("terms", { required: true })}
                 className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
               />
               <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
-                I agree to the{' '}
+                I agree to the{" "}
                 <Link
                   href="/terms"
                   className="font-medium hover:text-green-700 underline"
                 >
                   Terms & Conditions
-                </Link>{' '}
-                and{' '}
+                </Link>{" "}
+                and{" "}
                 <Link
                   href="/privacy"
                   className="font-medium hover:text-green-700 underline"
@@ -249,13 +251,13 @@ export default function SignUpPage() {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? 'Creating Account...' : 'Create Account'}
+              {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
 
           {/* Footer Link */}
           <p className="mt-6 text-center text-sm text-gray-600">
-            Already have an account?{' '}
+            Already have an account?{" "}
             <Link
               href="/sign-in"
               className="text-gray-600 font-medium hover:text-green-700 underline"

@@ -1,13 +1,15 @@
+import { Square } from "@/types/square"
+
 //Navigation Bar
 export const NAV_LINKS = [
   { href: "/", key: "home", label: "Home" },
   { href: "/about", key: "about", label: "About" },
   { href: "/venues", key: "Venues", label: "Venues" },
-  { href: "/events", key: "events", label: "Events" },
+  { href: "/organization-request", key: "organizationRequest", label: "Register Your Organization"},
 ];
 
 //Hero Section
-export const squareData = [
+export const squareData: Square[] = [
   {
     id: 1,
     src: "/images/Hero-id1.avif",
@@ -162,6 +164,16 @@ export const featureContents = [
     },
   },
 ];
+
+// Venues Hero Section Slider Images
+export const VENUES_SLIDER_IMAGES = [
+  "/images/VenuesHeroSection-id1.avif", 
+  "/images/VenuesHeroSection-id2.avif",  
+  "/images/VenuesHeroSection-id3.avif"   
+];
+
+//Default Profile Avatar Image
+export const DEFAULT_AVATAR_IMAGE = "/images/avatar.png";
 
 //layout.tsx conditional render for Navbar:
 export const authRoutes=[

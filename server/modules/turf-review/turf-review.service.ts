@@ -4,6 +4,8 @@ import User from "../user/user.model";
 import mongoose from "mongoose";
 import { uploadImage, deleteImage } from "../../utils/cloudinary";
 import { extractPublicIdFromUrl } from "../../utils/extractUrl";
+import ErrorResponse from '../../utils/errorResponse';
+
 
 interface CreateReviewData {
   turfId: string;
@@ -37,17 +39,22 @@ export interface ReviewSummary {
   ratingDistribution: { [rating: number]: number };
 }
 
+
 export default class TurfReviewService {
   // Create a new review
   async createReview(data: CreateReviewData): Promise<ITurfReview> {
-    const userExists = await User.exists({ _id: data.userId });
-    if (!userExists) {
-      throw new Error("User not found");
+    // Check if user exists and is verified
+    const user = await User.findById(data.userId);
+    if (!user) {
+      throw new ErrorResponse("User not found", 404);
+    }
+    if (!user.isVerified) {
+      throw new ErrorResponse("User must be verified to create a review", 403);
     }
 
     const turfExists = await Turf.exists({ _id: data.turfId });
     if (!turfExists) {
-      throw new Error("Turf not found");
+      throw new ErrorResponse("Turf not found", 404);
     }
 
     const existingReview = await TurfReview.findOne({
@@ -56,38 +63,46 @@ export default class TurfReviewService {
     });
 
     if (existingReview) {
-      throw new Error("User has already reviewed this turf");
+      throw new ErrorResponse("User has already reviewed this turf", 400);
     }
 
     // Upload images if provided
     let imageUrls: string[] = [];
     if (data.images && data.images.length > 0) {
-      const uploadPromises = data.images.map((image) => uploadImage(image));
-      const uploadedImages = await Promise.all(uploadPromises);
-      imageUrls = uploadedImages.map((img) => img.url);
+      try {
+        const uploadPromises = data.images.map((image) => uploadImage(image));
+        const uploadedImages = await Promise.all(uploadPromises);
+        imageUrls = uploadedImages.map((img) => img.url);
+      } catch (error) {
+        throw new ErrorResponse("Failed to upload images", 500);
+      }
     }
 
-    const turfReview = new TurfReview({
-      turf: data.turfId,
-      user: data.userId,
-      rating: data.rating,
-      review: data.review,
-      images: imageUrls,
-    });
+    try {
+      const turfReview = new TurfReview({
+        turf: data.turfId,
+        user: data.userId,
+        rating: data.rating,
+        review: data.review,
+        images: imageUrls,
+      });
 
-    const newReview = await turfReview.save();
+      const newReview = await turfReview.save();
 
-    // Update the User document
-    await User.findByIdAndUpdate(data.userId, {
-      $push: { reviews: newReview._id },
-    });
+      // Update the User document
+      await User.findByIdAndUpdate(data.userId, {
+        $push: { reviews: newReview._id },
+      });
 
-    // Update the Turf document
-    await Turf.findByIdAndUpdate(data.turfId, {
-      $push: { reviews: newReview._id },
-    });
+      // Update the Turf document
+      await Turf.findByIdAndUpdate(data.turfId, {
+        $push: { reviews: newReview._id },
+      });
 
-    return newReview;
+      return newReview;
+    } catch (error) {
+      throw new ErrorResponse("Failed to create review", 500);
+    }
   }
 
   // Update an existing review
@@ -96,32 +111,45 @@ export default class TurfReviewService {
     userId: string,
     data: UpdateReviewData
   ): Promise<ITurfReview | null> {
+    // Check if user is verified
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new ErrorResponse("User not found", 404);
+    }
+    if (!user.isVerified) {
+      throw new ErrorResponse("User must be verified to update a review", 403);
+    }
+
     const review = await TurfReview.findOne({
       _id: reviewId,
       user: userId,
     });
 
     if (!review) {
-      throw new Error("Review not found or user not authorized");
+      throw new ErrorResponse("Review not found or user not authorized", 404);
     }
 
     let newImageUrls: string[] | undefined;
 
     // Handle image updates
     if (data.images && data.images.length > 0) {
-      // Upload new images
-      const uploadPromises = data.images.map((image) => uploadImage(image));
-      const uploadedImages = await Promise.all(uploadPromises);
-      newImageUrls = uploadedImages.map((img) => img.url);
+      try {
+        // Upload new images
+        const uploadPromises = data.images.map((image) => uploadImage(image));
+        const uploadedImages = await Promise.all(uploadPromises);
+        newImageUrls = uploadedImages.map((img) => img.url);
 
-      // Delete old images if they exist
-      if (review.images && review.images.length > 0) {
-        await Promise.all(
-          review.images.map((imgUrl) => {
-            const publicId = extractPublicIdFromUrl(imgUrl);
-            return publicId ? deleteImage(publicId) : Promise.resolve();
-          })
-        );
+        // Delete old images if they exist
+        if (review.images && review.images.length > 0) {
+          await Promise.all(
+            review.images.map((imgUrl) => {
+              const publicId = extractPublicIdFromUrl(imgUrl);
+              return publicId ? deleteImage(publicId) : Promise.resolve();
+            })
+          );
+        }
+      } catch (error) {
+        throw new ErrorResponse("Failed to update images", 500);
       }
     }
 
@@ -135,14 +163,22 @@ export default class TurfReviewService {
       updatePayload.images = newImageUrls;
     }
 
-    // Update the review
-    const updatedReview = await TurfReview.findByIdAndUpdate(
-      reviewId,
-      { $set: updatePayload },
-      { new: true, runValidators: true }
-    );
+    try {
+      // Update the review
+      const updatedReview = await TurfReview.findByIdAndUpdate(
+        reviewId,
+        { $set: updatePayload },
+        { new: true, runValidators: true }
+      );
 
-    return updatedReview;
+      if (!updatedReview) {
+        throw new ErrorResponse("Failed to update review", 500);
+      }
+
+      return updatedReview;
+    } catch (error) {
+      throw new ErrorResponse("Failed to update review", 500);
+    }
   }
 
   // Delete a review
@@ -186,7 +222,8 @@ export default class TurfReviewService {
   // Get all reviews for a specific turf and their average rating and rating distribution
   async getReviewsByTurf(
     turfId: string,
-    options: ReviewFilterOptions = {}
+    options: ReviewFilterOptions = {},
+    requestingUserId?: string // Add parameter for requesting user
   ): Promise<ReviewSummary> {
     const filter = { turf: turfId };
     const matchStage = { turf: new mongoose.Types.ObjectId(turfId) };
@@ -199,8 +236,76 @@ export default class TurfReviewService {
         populateField: "user",
         populateSelect: "_id first_name last_name email isVerified",
       },
-      options
+      options,
+      requestingUserId
     );
+  }
+
+  // Common method for retrieving reviews with stats
+  private async getReviewsWithStats(
+    filter: any,
+    matchStage: any,
+    populateOptions: { populateField: string; populateSelect: string },
+    options: ReviewFilterOptions = {},
+    requestingUserId?: string
+  ): Promise<ReviewSummary> {
+    // Apply rating filters
+    this.applyRatingFilters(filter, matchStage, options);
+
+    // Get pagination and sorting options
+    const paginationSort = this.getPaginationAndSortOptions(options);
+
+    // Execute all promises in parallel for efficiency
+    const [totalCount, ratingStats] = await Promise.all([
+      TurfReview.countDocuments(filter),
+      TurfReview.aggregate([
+        { $match: matchStage },
+        {
+          $group: {
+            _id: "$rating",
+            count: { $sum: 1 },
+          },
+        },
+      ])
+    ]);
+
+    let userReview: any = null;
+
+    // If requesting user ID is provided, efficiently fetch their review first
+    // This leverages the compound index {turf: 1, user: 1}
+    if (requestingUserId && filter.turf) {
+      userReview = await TurfReview.findOne({
+        turf: filter.turf,
+        user: requestingUserId
+      })
+        .populate(populateOptions.populateField, populateOptions.populateSelect)
+        .lean();
+    }
+
+    // Modify the filter to exclude the user's review if we already found it
+    // This prevents duplicate retrieval and ensures efficient pagination
+    const reviewsFilter = userReview
+      ? { ...filter, _id: { $ne: userReview._id } }
+      : filter;
+
+    // Fetch all other reviews according to filter and sorting
+    let allReviews = await TurfReview.find(reviewsFilter)
+      .sort(paginationSort.sort)
+      .skip(options.skip ?? 0)
+      .limit(userReview ? (options.limit ? options.limit - 1 : 9) : (options.limit ?? 10))
+      .populate(populateOptions.populateField, populateOptions.populateSelect)
+      .lean();
+
+    // If we found the user's review, add it to the beginning of the results
+    if (userReview) {
+      allReviews.unshift(userReview);
+    }
+
+    return {
+      reviews: allReviews,
+      total: totalCount,
+      ...this.calculateRatingStats(ratingStats),
+    };
   }
 
   // Get a single review by ID
@@ -245,45 +350,6 @@ export default class TurfReviewService {
       },
       options
     );
-  }
-
-  // Common method for retrieving reviews with stats
-  private async getReviewsWithStats(
-    filter: any,
-    matchStage: any,
-    populateOptions: { populateField: string; populateSelect: string },
-    options: ReviewFilterOptions = {}
-  ): Promise<ReviewSummary> {
-    // Apply rating filters
-    this.applyRatingFilters(filter, matchStage, options);
-
-    // Get pagination and sorting options
-    const paginationSort = this.getPaginationAndSortOptions(options);
-
-    const [reviews, total, ratingStats] = await Promise.all([
-      TurfReview.find(filter)
-        .sort(paginationSort.sort)
-        .skip(paginationSort.skip)
-        .limit(paginationSort.limit)
-        .populate(populateOptions.populateField, populateOptions.populateSelect)
-        .lean(),
-      TurfReview.countDocuments(filter),
-      TurfReview.aggregate([
-        { $match: matchStage },
-        {
-          $group: {
-            _id: "$rating",
-            count: { $sum: 1 },
-          },
-        },
-      ]),
-    ]);
-
-    return {
-      reviews,
-      total,
-      ...this.calculateRatingStats(ratingStats),
-    };
   }
 
   // Helper to apply rating filters to both filter object and match stage
@@ -340,6 +406,83 @@ export default class TurfReviewService {
     return {
       averageRating,
       ratingDistribution,
+    };
+  }
+
+  // Check if a user has already reviewed a turf
+  async hasUserReviewedTurf(userId: string, turfId: string): Promise<boolean> {
+    const review = await TurfReview.findOne({
+      turf: turfId,
+      user: userId
+    });
+
+    return review !== null;
+  }
+
+  // Get all reviews summary for a specific organization
+  async getOrganizationTurfReviewSummary(organizationId: string) {
+
+    const organizationExists = await mongoose.model('Organization').exists({ _id: organizationId });
+    if (!organizationExists) {
+      throw new Error("Organization not found");
+    }
+
+    // Use aggregation to efficiently get all data in a single query
+    const turfs = await Turf.aggregate([
+      // Stage 1: Match all turfs belonging to this organization
+      { $match: { organization: new mongoose.Types.ObjectId(organizationId) } },
+
+      // Stage 2: Lookup reviews for each turf
+      {
+        $lookup: {
+          from: "turfreviews", // Collection name (lowercase and plural)
+          localField: "_id",
+          foreignField: "turf",
+          as: "turfReviews"
+        }
+      },
+
+      // Stage 3: Calculate review stats for each turf
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          sports: 1,
+          team_size: 1,
+          averageRating: {
+            $cond: {
+              if: { $gt: [{ $size: "$turfReviews" }, 0] },
+              then: { $avg: "$turfReviews.rating" },
+              else: 0
+            }
+          },
+          reviewCount: { $size: "$turfReviews" }
+        }
+      }
+    ]);
+
+    // Calculate organization-level summary
+    let totalReviews = 0;
+    let ratingSum = 0;
+
+    turfs.forEach(turf => {
+      totalReviews += turf.reviewCount;
+      // Only add to ratingSum if the turf has reviews
+      // This avoids 0 values skewing the organization average
+      if (turf.reviewCount > 0) {
+        ratingSum += (turf.averageRating * turf.reviewCount);
+      }
+    });
+
+    const organizationAverageRating = totalReviews > 0 ? ratingSum / totalReviews : 0;
+
+    return {
+      turfs,
+      summary: {
+        totalTurfs: turfs.length,
+        totalReviews,
+        organizationAverageRating
+      }
     };
   }
 }

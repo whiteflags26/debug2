@@ -28,5 +28,9 @@ router.get("/:id", turfController.getTurfById);
 router.put("/:id", upload.array("images", 5), turfController.updateTurfById);
 router.delete("/:id", turfController.deleteTurfById);
 router.get("/filter/search", turfController.filterTurfs);
+router.get("/:id/status", turfController.getTurfStatus);
+router.get("/organization/:organizationId", turfController.getTurfsByOrganizationId);
+
+
 
 export default router;

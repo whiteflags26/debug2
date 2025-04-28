@@ -1,13 +1,20 @@
 "use client";
+
 import React, { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { FiArrowUpRight } from "react-icons/fi";
 import { featureContents } from "@/constants";
 import { Button } from "@/components/Button";
+import type { 
+  TextParallaxContentProps, 
+  StickyImageProps, 
+  OverlayCopyProps, 
+  ExampleContentProps 
+} from "@/types/feature";
 
 const IMG_PADDING = 10;
 
-export const FeatureSection = () => {
+export const FeatureSection: React.FC = () => {
   return (
     <div className="bg-white">
       {featureContents.map(({ id, imgPath, heading, content }) => (
@@ -19,7 +26,7 @@ export const FeatureSection = () => {
   );
 };
 
-const TextParallaxContent = ({ imgPath, heading, children }) => {
+const TextParallaxContent: React.FC<TextParallaxContentProps> = ({ imgPath, heading, children }) => {
   return (
     <div
       style={{
@@ -36,8 +43,8 @@ const TextParallaxContent = ({ imgPath, heading, children }) => {
   );
 };
 
-const StickyImage = ({ imgPath }) => {
-  const targetRef = useRef(null);
+const StickyImage: React.FC<StickyImageProps> = ({ imgPath }) => {
+  const targetRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: targetRef,
     offset: ["end end", "end start"],
@@ -61,16 +68,14 @@ const StickyImage = ({ imgPath }) => {
     >
       <motion.div
         className="absolute inset-0 bg-neutral-950/70"
-        style={{
-          opacity,
-        }}
+        style={{ opacity }}
       />
     </motion.div>
   );
 };
 
-const OverlayCopy = ({ heading }) => {
-  const targetRef = useRef(null);
+const OverlayCopy: React.FC<OverlayCopyProps> = ({ heading }) => {
+  const targetRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: targetRef,
     offset: ["start end", "end start"],
@@ -81,10 +86,7 @@ const OverlayCopy = ({ heading }) => {
 
   return (
     <motion.div
-      style={{
-        y,
-        opacity,
-      }}
+      style={{ y, opacity }}
       ref={targetRef}
       className="absolute left-0 top-0 flex h-screen w-full flex-col items-center justify-center text-white"
     >
@@ -93,7 +95,7 @@ const OverlayCopy = ({ heading }) => {
   );
 };
 
-const ExampleContent = ({ content }) => (
+const ExampleContent: React.FC<ExampleContentProps> = ({ content }) => (
   <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-4 pb-24 pt-12 md:grid-cols-12">
     <h2 className="col-span-1 text-3xl font-bold md:col-span-4">
       {content.title}

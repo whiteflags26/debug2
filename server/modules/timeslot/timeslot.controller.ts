@@ -1,7 +1,7 @@
-import { NextFunction, Request, Response } from 'express';
-import asyncHandler from '../../shared/middleware/async';
-import ErrorResponse from '../../utils/errorResponse';
-import TimeSlotService from './timeslot.service';
+import { NextFunction, Request, Response } from "express";
+import asyncHandler from "../../shared/middleware/async";
+import ErrorResponse from "../../utils/errorResponse";
+import TimeSlotService from "./timeslot.service";
 
 export default class TimeSlotController {
   private readonly timeSlotService: TimeSlotService;
@@ -16,10 +16,10 @@ export default class TimeSlotController {
         turfId,
         new Date(startDate),
         new Date(endDate),
-        slotDuration,
+        slotDuration
       );
       res.status(201).json({ success: true, data: slots });
-    },
+    }
   );
 
   getTimeSlot = asyncHandler(
@@ -27,7 +27,7 @@ export default class TimeSlotController {
       const filter = req.query;
       const slots = await this.timeSlotService.getTimeSlots(filter);
       res.status(200).json({ success: true, data: slots });
-    },
+    }
   );
 
   getAvailableTimeSlot = asyncHandler(
@@ -38,10 +38,10 @@ export default class TimeSlotController {
         : new Date();
       const slots = await this.timeSlotService.getAvailableTimeSlots(
         turfId,
-        date,
+        date
       );
       res.status(200).json({ success: true, data: slots });
-    },
+    }
   );
 
   updateTimeSlot = asyncHandler(
@@ -49,9 +49,9 @@ export default class TimeSlotController {
       const { id } = req.params;
       const updateData = req.body;
       const slot = await this.timeSlotService.updateTimeSlot(id, updateData);
-      if (!slot) return next(new ErrorResponse('slot not found', 404));
+      if (!slot) return next(new ErrorResponse("slot not found", 404));
       res.status(200).json({ success: true, data: slot });
-    },
+    }
   );
 
   deleteTimeSlot = asyncHandler(
@@ -60,6 +60,6 @@ export default class TimeSlotController {
       const result = await this.timeSlotService.deleteTimeSlots(filters);
 
       res.status(200).json({ success: true, data: result });
-    },
+    }
   );
 }

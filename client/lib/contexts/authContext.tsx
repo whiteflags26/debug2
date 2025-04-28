@@ -8,17 +8,11 @@ import {
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-
-interface User {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-}
+import {ApiError} from "@/types/api-error";
+import {IUser} from "@/types/user"
 
 interface AuthContextType {
-  user: User | null;
+  user: IUser | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -27,7 +21,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<IUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -80,7 +74,8 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       setUser(data.data.user);
       router.push("/");
       router.refresh();
-    } catch (error: any) {
+    } catch (err) {
+      const error= err as ApiError;
       throw new Error(error.message);
     }
   };

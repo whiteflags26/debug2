@@ -3,7 +3,8 @@
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/Button";
-import { sendForgotPasswordRequest } from "@/lib/server-apis/password-api";
+import { sendForgotPasswordRequest } from "@/lib/server-apis/authentication/password-api";
+import { ApiError } from "@/types/api-error";
 import toast from "react-hot-toast";
 
 interface ForgotPasswordFormData {
@@ -21,8 +22,11 @@ export default function ForgotPasswordPage() {
     try {
       const response = await sendForgotPasswordRequest(data.email);
       toast.success(response.message);
-    } catch (err: any) {
-      toast.error(err.message ?? "An error occurred.");
+    } catch (err) {
+      const error = err as ApiError;
+      toast.error(
+        error?.message || "An error occurred while processing your request."
+      );
     }
   };
 

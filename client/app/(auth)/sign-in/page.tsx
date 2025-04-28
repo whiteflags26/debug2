@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/lib/contexts/authContext";
+import { ApiError } from "@/types/api-error";
 
 interface SignInFormData {
   email: string;
@@ -36,7 +37,8 @@ export default function SignInPage() {
       toast.success("Welcome back!");
       reset(); // Clear form
       router.push("/");
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as ApiError;
       toast.error(error.message ?? "Failed to sign in");
     } finally {
       setIsLoading(false);

@@ -5,6 +5,7 @@ import ExpressMongoSanitize from 'express-mongo-sanitize';
 import helmet from 'helmet';
 import connectDB from './config/db';
 import router from './routes/index';
+import router from './routes/index';
 import errorHandler from './shared/middleware/error';
 import { setupHealthMonitoring } from './modules/health-metrics/index';
 import dotenv from 'dotenv';
@@ -37,9 +38,19 @@ app.use(express.json());
 // Use the same corsOptions configuration consistently
 app.use(cors(corsOptions));
 
+
+// Use the same corsOptions configuration consistently
+app.use(cors(corsOptions));
+
 app.use(cookieParser());
 app.use(ExpressMongoSanitize());
 app.use(helmet());
+
+// Add pre-flight handling for all routes
+app.options('*', cors(corsOptions));
+
+// Health monitoring middleware
+setupHealthMonitoring(app);
 
 // Add pre-flight handling for all routes
 app.options('*', cors(corsOptions));
@@ -51,3 +62,4 @@ app.use(router);
 app.use(errorHandler);
 
 export default app;
+

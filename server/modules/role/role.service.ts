@@ -152,7 +152,9 @@ class RoleService {
     const permissions = await Permission.find({
       _id: { $in: permissionIds },
       scope: requiredScope,
-    }).select('_id').lean<{ _id: Types.ObjectId }[]>();;
+    })
+      .select('_id')
+      .lean<{ _id: Types.ObjectId }[]>();
 
     if (permissions.length !== permissionIds.length) {
       throw new ErrorResponse(
@@ -241,10 +243,10 @@ class RoleService {
       );
     }
   }
-   /**
+  /**
    * Get all global roles
    */
-   public async getGlobalRoles(): Promise<IRole[]> {
+  public async getGlobalRoles(): Promise<IRole[]> {
     try {
       return await Role.find({ scope: PermissionScope.GLOBAL })
         .populate('permissions', 'name description scope')
@@ -252,80 +254,100 @@ class RoleService {
     } catch (error: any) {
       throw new ErrorResponse(
         error.message ?? 'Failed to fetch global roles',
-        500
+        500,
       );
     }
   }
- /**
+  /**
    * Get role by ID
    */
- public async getRoleById(roleId: string): Promise<IRole> {
-  try {
-    const role = await Role.findById(roleId)
-      .populate('permissions', 'name description scope');
-    
-    if (!role) {
-      throw new ErrorResponse('Role not found', 404);
-    }
-    
-    return role;
-  } catch (error: any) {
-    throw new ErrorResponse(
-      error.message ?? 'Failed to fetch role',
-      error.statusCode ?? 500
-    );
-  }
-}
-
-/**
- * Delete role by ID and remove all associated assignments
- */
-public async deleteRole(roleId: string): Promise<void> {
-  try {
-    const role = await Role.findById(roleId);
-    if (!role) {
-      throw new ErrorResponse('Role not found', 404);
-    }
-
-    if (role.isDefault) {
-      throw new ErrorResponse('Cannot delete default roles', 400);
-    }
-
-    // Use a session to ensure both operations succeed or fail together
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
+  public async getRoleById(roleId: string): Promise<IRole> {
     try {
-      // Delete all role assignments first
-      await UserRoleAssignment.deleteMany({ roleId: role._id }).session(session);
+      const role = await Role.findById(roleId).populate(
+        'permissions',
+        'name description scope',
+      );
 
-      // Then delete the role itself
-      await Role.deleteOne({ _id: role._id }).session(session);
+      if (!role) {
+        throw new ErrorResponse('Role not found', 404);
+      }
 
-      // Commit the transaction
-      await session.commitTransaction();
-    } catch (error) {
-      // If anything fails, rollback the transaction
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      // End the session
-      session.endSession();
+      return role;
+    } catch (error: any) {
+      throw new ErrorResponse(
+        error.message ?? 'Failed to fetch role',
+        error.statusCode ?? 500,
+      );
     }
-
-  } catch (error: any) {
-    console.error('Error deleting role:', error);
-    throw new ErrorResponse(
-      error.message ?? 'Failed to delete role',
-      error.statusCode ?? 500
-    );
   }
-}
 
+  /**
+   * Delete role by ID and remove all associated assignments
+   */
+  public async deleteRole(roleId: string): Promise<void> {
+    try {
+      const role = await Role.findById(roleId);
+      if (!role) {
+        throw new ErrorResponse('Role not found', 404);
+      }
 
+      if (role.isDefault) {
+        throw new ErrorResponse('Cannot delete default roles', 400);
+      }
 
+      // Use a session to ensure both operations succeed or fail together
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
+      try {
+        // Delete all role assignments first
+        await UserRoleAssignment.deleteMany({ roleId: role._id }).session(
+          session,
+        );
 
+        // Then delete the role itself
+        await Role.deleteOne({ _id: role._id }).session(session);
+
+        // Commit the transaction
+        await session.commitTransaction();
+      } catch (error) {
+        // If anything fails, rollback the transaction
+        await session.abortTransaction();
+        throw error;
+      } finally {
+        // End the session
+        session.endSession();
+      }
+    } catch (error: any) {
+      console.error('Error deleting role:', error);
+      throw new ErrorResponse(
+        error.message ?? 'Failed to delete role',
+        error.statusCode ?? 500,
+      );
+    }
+  }
+
+  /**
+   * Get all permissions for a role
+   */
+  public async getRolePermissions(roleId: string): Promise<string[]> {
+    try {
+      const role = await Role.findById(roleId)
+        .populate('permissions', 'name')
+        .lean();
+
+      if (!role) {
+        throw new ErrorResponse('Role not found', 404);
+      }
+
+      return role.permissions.map((permission: any) => permission.name);
+    } catch (error: any) {
+      throw new ErrorResponse(
+        error.message ?? 'Failed to fetch role permissions',
+        error.statusCode ?? 500,
+      );
+    }
+  }
 }
 
 export const roleService = new RoleService();

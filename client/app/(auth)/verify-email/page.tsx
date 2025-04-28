@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
-import { verifyEmail } from "@/lib/server-apis/verifyEmail-api";
+import { verifyEmail } from "@/lib/server-apis/authentication/verifyEmail-api";
+import { ApiError } from "@/types/api-error";
 
 const VerifyEmailPage = () => {
   const router = useRouter();
@@ -27,7 +28,8 @@ const VerifyEmailPage = () => {
         await verifyEmail(token, userId);
         setMessage("Your email has been verified successfully!");
         setIsVerified(true);
-      } catch (error: any) {
+      } catch (err) {
+        const error = err as ApiError;
         setMessage(
           error.message ?? "An error occurred. Please try again later."
         );

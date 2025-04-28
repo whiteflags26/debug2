@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { squareData } from "@/constants/index";
+import {Square} from "@/types/square";
 
 const Hero = () => {
   return (
@@ -25,7 +26,7 @@ const Hero = () => {
   );
 };
 
-const shuffle = (array) => {
+const shuffle = (array: Square[]): Square[] => {
   let currentIndex = array.length,
     randomIndex;
 
@@ -43,7 +44,7 @@ const shuffle = (array) => {
 };
 
 const ShuffleGrid = () => {
-  const [squares, setSquares] = useState([]);
+  const [squares, setSquares] = useState<Square[]>([]);
 
   useEffect(() => {
     const shuffledData = shuffle([...squareData]);
@@ -58,7 +59,7 @@ const ShuffleGrid = () => {
 
   return (
     <div className="grid grid-cols-4 grid-rows-4 h-[450px] gap-1">
-      {squares.map((sq) => (
+      {squares.map((sq: Square) => (
         <motion.div
           key={sq.id}
           layout

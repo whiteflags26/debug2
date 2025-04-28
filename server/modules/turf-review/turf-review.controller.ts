@@ -6,7 +6,6 @@ import TurfReviewService, {
 } from "./turf-review.service";
 import { AuthenticatedRequest } from "../../types/request";
 import { getUserId } from "../../utils/getUserId";
-import { AuthRequest } from "../auth/auth.middleware";
 import ErrorResponse from "../../utils/errorResponse";
 
 export default class TurfReviewController {
@@ -103,12 +102,12 @@ export default class TurfReviewController {
   );
 
   /**
-   * @route   GET /api/v1/turf-review/turf/:turfId
+   * @route   GET /api/v1/turf-review/turf/:turfId/public
    * @desc    get all the reviews by turf and other filters and their average rating and rating distribution
    * @access  Public
    */
-  public getReviewsByTurf = asyncHandler(
-    async (req: AuthRequest, res: Response): Promise<void> => {
+  public getReviewsByTurfPublic = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response): Promise<void> => {
       const { turfId } = req.params;
       const options = this.extractFilterOptions(req);
 
@@ -122,12 +121,34 @@ export default class TurfReviewController {
   );
 
   /**
+   * @route   GET /api/v1/turf-review/turf/:turfId
+   * @desc    get all the reviews by turf and other filters and their average rating and rating distribution 
+   *          but the first review is always of the logged in user if a review of the logged in user exists
+   * @access  Private
+   */
+  public getReviewsByTurf = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+      const { turfId } = req.params;
+      const options = this.extractFilterOptions(req);
+      const userId = getUserId(req);
+
+      const result = await this.turfReviewService.getReviewsByTurf(
+        turfId,
+        options,
+        userId
+      );
+
+      this.sendReviewResponse(res, result, options);
+    }
+  );
+
+  /**
    * @route   GET /api/v1/turf-review/review/:id
    * @desc    get review by its id
    * @access  Public
    */
   public getReviewById = asyncHandler(
-    async (req: AuthRequest, res: Response): Promise<void> => {
+    async (req: AuthenticatedRequest, res: Response): Promise<void> => {
       const { reviewId } = req.params;
       const review = await this.turfReviewService.getReviewById(reviewId);
 
@@ -158,13 +179,14 @@ export default class TurfReviewController {
   );
 
   /**
-   * @route   GET /api/v1/turf-review/user/:userId
+   * @route   GET /api/v1/turf-review/user/
    * @desc    Get all reviews by a specific user with average rating and rating distribution
-   * @access  Public
+   * @access  Private
    */
   public getReviewsByUser = asyncHandler(
-    async (req: AuthRequest, res: Response): Promise<void> => {
-      const { userId } = req.params;
+    async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+      const userId = getUserId(req);
+      console.log("userId", userId);
       const options = this.extractFilterOptions(req);
 
       const result = await this.turfReviewService.getReviewsByUser(
@@ -180,7 +202,7 @@ export default class TurfReviewController {
    * Extract filter options from request query parameters
    * @private
    */
-  private extractFilterOptions(req: AuthRequest): ReviewFilterOptions {
+  private extractFilterOptions(req: AuthenticatedRequest): ReviewFilterOptions {
     return {
       minRating: req.query.minRating ? Number(req.query.minRating) : undefined,
       maxRating: req.query.maxRating ? Number(req.query.maxRating) : undefined,
@@ -188,7 +210,7 @@ export default class TurfReviewController {
       skip:
         req.query.page && req.query.limit
           ? (parseInt(req.query.page as string) - 1) *
-            parseInt(req.query.limit as string)
+          parseInt(req.query.limit as string)
           : undefined,
       sortBy: (req.query.sortBy as string) || "createdAt",
       sortOrder: req.query.sortOrder === "asc" ? "asc" : "desc",
@@ -228,4 +250,54 @@ export default class TurfReviewController {
       },
     });
   }
+
+  /**
+ * @route   GET /api/v1/turf-review/has-reviewed/:turfId
+ * @desc    Check if the authenticated user has already reviewed a specific turf
+ * @access  Private
+ */
+  public hasUserReviewedTurf = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+      const { turfId } = req.params;
+      const userId = getUserId(req);
+
+      if (!turfId) {
+        throw new ErrorResponse("Turf ID is required", 400);
+      }
+
+      const hasReviewed = await this.turfReviewService.hasUserReviewedTurf(userId, turfId);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          hasReviewed
+        }
+      });
+    }
+  );
+
+  /**
+ * @route   GET /api/v1/turf-review/organization/:organizationId
+ * @desc    Get review summaries for all turfs belonging to an organization
+ * @access  Public
+ */
+  public getOrganizationTurfReviewSummary = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+      const { organizationId } = req.params;
+
+      if (!organizationId) {
+        throw new ErrorResponse("Organization ID is required", 400);
+      }
+
+      const result = await this.turfReviewService.getOrganizationTurfReviewSummary(organizationId);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          turfs: result.turfs,
+          summary: result.summary
+        }
+      });
+    }
+  );
 }
