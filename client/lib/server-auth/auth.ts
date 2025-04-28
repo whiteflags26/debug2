@@ -30,6 +30,7 @@ export async function auth(): Promise<Session | null> {
     }
 
     const data = await response.json();
+    console.log(data);
     return { user: data.data as IUser };
   } catch (error) {
     console.error("Auth error:", error);
