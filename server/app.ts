@@ -38,9 +38,6 @@ app.use(express.json());
 app.use(cors(corsOptions));
 
 
-// Use the same corsOptions configuration consistently
-app.use(cors(corsOptions));
-
 app.use(cookieParser());
 app.use(ExpressMongoSanitize());
 app.use(helmet());

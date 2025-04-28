@@ -144,9 +144,9 @@ export const login = asyncHandler(
     // Set token in cookie
     res.cookie("token", token, {
       httpOnly: true,
-      //secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      sameSite: "lax",
+      sameSite: "none",
     });
 
     res.status(200).json({
