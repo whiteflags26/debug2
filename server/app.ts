@@ -5,7 +5,6 @@ import ExpressMongoSanitize from 'express-mongo-sanitize';
 import helmet from 'helmet';
 import connectDB from './config/db';
 import router from './routes/index';
-import router from './routes/index';
 import errorHandler from './shared/middleware/error';
 import { setupHealthMonitoring } from './modules/health-metrics/index';
 import dotenv from 'dotenv';
