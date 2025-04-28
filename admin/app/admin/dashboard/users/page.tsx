@@ -39,7 +39,7 @@ export default function UsersManagement() {
     const fetchGlobalRoles = async () => {
       try {
         const response = await axios.get(
-          'http://localhost:5000/api/v1/roles/global',
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/roles/global`,
           { withCredentials: true },
         );
         setGlobalRoles(response.data.data);
