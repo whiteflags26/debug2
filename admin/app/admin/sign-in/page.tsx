@@ -10,7 +10,7 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const backendUrl = process.env.NEXT_PUBLIC_URL ?? 'http://localhost:5000';
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
