@@ -1,13 +1,24 @@
-import { auth } from "@/lib/server-auth/auth";
-import { redirect } from "next/navigation";
+"use client"
+import { useRouter } from "next/navigation";
 import { Suspense } from "react";
 import ProfileContent from "@/components/profile/ProfileContent";
+import { useAuth } from "@/lib/contexts/authContext";
+;
 
-export default async function ProfilePage() {
-  const session = await auth();
+export default function ProfilePage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
-  if (!session?.user) {
-    redirect("/auth/login");
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (!isLoading && !user) {
+    router.push("/sign-in");
   }
 
   return (
@@ -19,7 +30,7 @@ export default async function ProfilePage() {
             <div className="bg-white rounded-xl shadow-lg p-8 h-96 mt-8"></div>
           </div>
         }>
-          <ProfileContent initialUser={session.user} />
+          {user && <ProfileContent initialUser={user} />}
         </Suspense>
       </div>
     </main>
