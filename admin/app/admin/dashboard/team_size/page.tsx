@@ -23,19 +23,19 @@ import { toast } from 'react-hot-toast';
 // Types
 interface TeamSize {
   _id: string;
-  name: string;
+  name: number; 
 }
 
 interface EditingTeamSize {
   id: string;
-  name: string;
+  name: number; 
 }
 
 export default function TeamSizesPage() {
   // State
   const [teamSizes, setTeamSizes] = useState<TeamSize[]>([]);
   const [filteredTeamSizes, setFilteredTeamSizes] = useState<TeamSize[]>([]);
-  const [newTeamSize, setNewTeamSize] = useState('');
+  const [newTeamSize, setNewTeamSize] = useState(''); // Keep as string for input
   const [editingTeamSize, setEditingTeamSize] =
     useState<EditingTeamSize | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,7 +59,7 @@ export default function TeamSizesPage() {
       const lowercasedQuery = searchQuery.toLowerCase();
       setFilteredTeamSizes(
         teamSizes.filter(teamSize =>
-          teamSize.name.toLowerCase().includes(lowercasedQuery),
+          teamSize.name.toString().toLowerCase().includes(lowercasedQuery),
         ),
       );
     }
@@ -91,7 +91,17 @@ export default function TeamSizesPage() {
 
     setIsCreating(true);
     try {
-      const response = await createTeamSize({ name: newTeamSize.trim() });
+      // Convert string to number before sending to API
+      const numericValue = Number(newTeamSize.trim());
+      
+      // Check if it's a valid number
+      if (isNaN(numericValue)) {
+        toast.error('Please enter a valid number');
+        setIsCreating(false);
+        return;
+      }
+      
+      const response = await createTeamSize({ name: numericValue });
       if (response.success) {
         toast.success('Team size created successfully');
         setNewTeamSize('');
@@ -111,12 +121,21 @@ export default function TeamSizesPage() {
   // Update team size
   const handleUpdateTeamSize = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingTeamSize?.id || !editingTeamSize.name.trim()) return;
+    if (!editingTeamSize?.id) return;
 
     setIsUpdating(true);
     try {
+      // Ensure we have a valid number
+      const numericValue = Number(editingTeamSize.name);
+      
+      if (isNaN(numericValue)) {
+        toast.error('Please enter a valid number');
+        setIsUpdating(false);
+        return;
+      }
+      
       const response = await updateTeamSize(editingTeamSize.id, {
-        name: editingTeamSize.name.trim(),
+        name: numericValue,
       });
       if (response.success) {
         toast.success('Team size updated successfully');
@@ -210,7 +229,7 @@ export default function TeamSizesPage() {
 
           <form onSubmit={handleCreateTeamSize} className="flex gap-2">
             <input
-              type="text"
+              type="number" // Changed from text to number
               value={newTeamSize}
               onChange={e => setNewTeamSize(e.target.value)}
               placeholder="New team size"
@@ -240,12 +259,12 @@ export default function TeamSizesPage() {
                 {editingTeamSize?.id === teamSize._id ? (
                   <form onSubmit={handleUpdateTeamSize} className="flex gap-2">
                     <input
-                      type="text"
+                      type="number" // Changed from text to number
                       value={editingTeamSize.name}
                       onChange={e =>
                         setEditingTeamSize({
                           ...editingTeamSize,
-                          name: e.target.value,
+                          name: Number(e.target.value), // Convert to number immediately
                         })
                       }
                       className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-gray-500 focus:border-gray-500 bg-white text-gray-900"
@@ -279,7 +298,7 @@ export default function TeamSizesPage() {
                         <Users className="h-5 w-5 text-gray-600" />
                       </div>
                       <span className="text-sm font-medium text-gray-900">
-                        {teamSize.name}
+                        {teamSize.name.toString()} {/* Convert number to string for display */}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
