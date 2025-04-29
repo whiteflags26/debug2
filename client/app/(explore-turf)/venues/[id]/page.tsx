@@ -1,3 +1,4 @@
+"use client";
 import { ITurf } from "@/types/turf";
 import { fetchSingleTurf } from "@/lib/server-apis/single-turf/single-turf-api";
 import { fetchOrganizationTurfs } from "@/lib/server-apis/single-turf/fetchOrganizationTurfs-api";
@@ -6,27 +7,66 @@ import TurfDetails from "@/components/single-turf/TurfDetails";
 import OtherOrganizationTurfs from "@/components/single-turf/OtherOrganizationTurfs";
 import ReviewSection from "@/components/single-turf/ReviewRating";
 import BookingButton from "@/components/booking/BookingButton";
-import { notFound } from "next/navigation";
-import { auth } from "@/lib/server-auth/auth";
+import { notFound, useParams } from "next/navigation";
+import { useAuth } from "@/lib/contexts/authContext";
 import { Card } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 
-interface SingleTurfPageProps {
-  params: Promise<{ id: string }>;
-}
+export default function SingleTurfPage() {
+  const { user } = useAuth();
+  const params = useParams();
+  const turfId = params.id as string;
 
-export default async function SingleTurfPage({ params }: SingleTurfPageProps) {
-  const { id: turfId } = await params;
-  const session = await auth();
-  const currentUser = session?.user || null;
+  const [turf, setTurf] = useState<ITurf | null>(null);
+  const [otherTurfs, setOtherTurfs] = useState<ITurf[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch data
-  const turf: ITurf | null = await fetchSingleTurf(turfId);
-  if (!turf) notFound();
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch turf data
+        const turfData = await fetchSingleTurf(turfId);
+        if (!turfData) {
+          notFound();
+          return;
+        }
+        setTurf(turfData);
 
-  const organizationId = turf.organization?._id;
-  const otherTurfs: ITurf[] = organizationId
-    ? (await fetchOrganizationTurfs(organizationId, turfId)) || []
-    : [];
+        // Fetch other turfs from the same organization
+        const organizationId = turfData.organization?._id;
+        if (organizationId) {
+          const orgTurfs = await fetchOrganizationTurfs(organizationId, turfId);
+          if (orgTurfs) {
+            setOtherTurfs(orgTurfs);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching turf data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (turfId) {
+      fetchData();
+    }
+  }, [turfId]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg font-medium">Loading turf details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!turf) {
+    return notFound();
+  }
 
   return (
     <div className="min-h-screen bg-background pt-20">
@@ -47,7 +87,7 @@ export default async function SingleTurfPage({ params }: SingleTurfPageProps) {
           {/* Left Column - Main Content */}
           <div className="lg:col-span-8 space-y-8">
             <TurfDetails turf={turf} />
-            <ReviewSection turfId={turfId} currentUser={currentUser} />
+            <ReviewSection turfId={turfId} currentUser={user} />
           </div>
 
           {/* Right Column - Sidebar */}
