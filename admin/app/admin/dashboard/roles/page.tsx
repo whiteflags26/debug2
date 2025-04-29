@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import CreateRoleModal from '../../../../component/admin/roles/CreateRoleModal';
 import RoleTable from '../../../../component/admin/roles/RoleTable';
 import { Permission, Role } from '../../../../component/admin/roles/types';
+import { handleAxiosError } from '@/lib/utils/handleAxiosError';
 
 export default function RolesManagement() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -33,9 +34,9 @@ export default function RolesManagement() {
         setPermissions(permissionsResponse.data.data);
         setError(null);
       } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load data');
-        toast.error('Failed to load data');
+        const errorMessage =handleAxiosError(err, 'Error Fetching Permissions');
+        setError(errorMessage);
+        toast.error(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -73,15 +74,16 @@ export default function RolesManagement() {
         toast.success('Role created successfully!');
         setIsCreateModalOpen(false);
         resetForm();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in API call:', err);
         const errorMessage =
-          err.response?.data?.message ?? err.message ?? 'Failed to create role';
+        handleAxiosError(err, 'Error creating role') 
+        setError(errorMessage);
         toast.error(errorMessage);
       }
-    } catch (err: any) {
-      console.error('Error in component:', err);
-      toast.error('Component error: ' + (err.message ?? 'Unknown error'));
+    } catch (err: unknown) {
+      setError(handleAxiosError(err, 'Error creating role'));
+      toast.error(error);
     }
   };
 
@@ -121,7 +123,7 @@ export default function RolesManagement() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-600">{error}</div>
+        <div className="text-red-600">UnAuthourized To Access This Route</div>
       </div>
     );
   }
