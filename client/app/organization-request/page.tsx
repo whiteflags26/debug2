@@ -338,7 +338,7 @@ export default function CreateOrganizationRequestForm() {
   // Loading state while checking auth
   if (authLoading) {
     return (
-      <div className="max-w-7xl mx-auto p-6 flex items-center justify-center h-64">
+      <div className="max-w-7xl mx-auto p-6 flex items-center justify-center h-64 mt-10">
         <div className="flex flex-col items-center">
           <svg
             className="animate-spin h-10 w-10 text-blue-500 mb-4"
